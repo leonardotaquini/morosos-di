@@ -104,7 +104,6 @@ function getInitials(name: string) {
     .slice(0, 2)
     .toUpperCase()
 }
-
 export default function Home() {
   const [debtors, setDebtors] = useState<Debtor[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -165,9 +164,8 @@ export default function Home() {
     resetForm()
     setIsDialogOpen(false)
   }
-
   return (
-    <div className="bg-background min-h-screen">
+<div className="bg-background min-h-screen">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-12 sm:px-10">
         <header className="flex flex-col gap-4">
           <Badge variant="outline" className="w-fit uppercase tracking-wide">
