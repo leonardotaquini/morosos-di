@@ -1,103 +1,234 @@
-import Image from "next/image";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { debtors } from "@/lib/debtors"
+import { differenceInDays, format, formatDistanceToNow, parseISO } from "date-fns"
+import { es } from "date-fns/locale"
+import { CakeSlice, CalendarClock, Timer as TimerIcon, Users } from "lucide-react"
+
+type Priority = {
+  label: string
+  variant: "default" | "secondary" | "destructive" | "outline"
+}
+
+type EnrichedDebtor = (typeof debtors)[number] & {
+  owedSinceDate: Date
+  owedDays: number
+  priority: Priority
+}
+
+function getPriority(days: number): Priority {
+  if (days >= 600) {
+    return { label: "Crítico", variant: "destructive" }
+  }
+
+  if (days >= 300) {
+    return { label: "Urgente", variant: "default" }
+  }
+
+  if (days >= 120) {
+    return { label: "Seguimiento", variant: "secondary" }
+  }
+
+  return { label: "Reciente", variant: "outline" }
+}
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part.charAt(0))
+    .join("")
+    .slice(0, 2)
+    .toUpperCase()
+}
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const today = new Date()
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+  const enrichedDebtors: EnrichedDebtor[] = debtors
+    .map((debtor) => {
+      const owedSinceDate = parseISO(debtor.owedSince)
+      const owedDays = Math.max(differenceInDays(today, owedSinceDate), 0)
+
+      return {
+        ...debtor,
+        owedSinceDate,
+        owedDays,
+        priority: getPriority(owedDays),
+      }
+    })
+    .sort((a, b) => b.owedDays - a.owedDays)
+
+  const totalDays = enrichedDebtors.reduce((sum, debtor) => sum + debtor.owedDays, 0)
+  const averageDays = enrichedDebtors.length
+    ? Math.round(totalDays / enrichedDebtors.length)
+    : 0
+  const topDebtor = enrichedDebtors[0]
+
+  return (
+    <div className="bg-background min-h-screen">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-12 sm:px-10">
+        <header className="flex flex-col gap-4">
+          <Badge variant="outline" className="w-fit uppercase tracking-wide">
+            Dirección de Ingeniería
+          </Badge>
+          <div className="space-y-2">
+            <h1 className="text-3xl font-semibold sm:text-4xl">
+              Tablero de morosos de torta
+            </h1>
+            <p className="text-muted-foreground text-base sm:text-lg">
+              Registro oficial de quién debe la celebración del último cumpleaños
+              dentro de la dirección. Cada tarjeta resume el compromiso, los días
+              en deuda y el seguimiento más reciente.
+            </p>
+          </div>
+        </header>
+
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Total de morosos
+              </CardTitle>
+              <Users className="size-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-semibold">{enrichedDebtors.length}</p>
+              <p className="text-muted-foreground text-sm">
+                Dirección de Ingeniería 2024-2025
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Promedio de días en deuda
+              </CardTitle>
+              <TimerIcon className="size-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-semibold">{averageDays} días</p>
+              <p className="text-muted-foreground text-sm">
+                Tiempo desde el cumpleaños pendiente
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="sm:col-span-2 xl:col-span-1">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Mayor deuda activa
+              </CardTitle>
+              <CalendarClock className="size-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-semibold">
+                {topDebtor ? `${topDebtor.owedDays} días` : "Sin adeudos"}
+              </p>
+              <p className="text-muted-foreground text-sm">
+                {topDebtor ? topDebtor.name : "Todos celebraron a tiempo"}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="xl:col-span-1">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Tortas comprometidas
+              </CardTitle>
+              <CakeSlice className="size-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-semibold">{debtors.length}</p>
+              <p className="text-muted-foreground text-sm">
+                Sabores pendientes de entrega
+              </p>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className="grid gap-6 md:grid-cols-2">
+          {enrichedDebtors.map((debtor) => {
+            const owedDistance = formatDistanceToNow(debtor.owedSinceDate, {
+              locale: es,
+              addSuffix: true,
+            })
+            const lastReminderDate = parseISO(debtor.lastReminder)
+
+            return (
+              <Card key={debtor.id} className="h-full">
+                <CardHeader className="border-b pb-6">
+                  <CardAction>
+                    <Badge variant={debtor.priority.variant}>{debtor.priority.label}</Badge>
+                  </CardAction>
+                  <div className="flex items-start gap-4">
+                    <Avatar className="size-16">
+                      <AvatarImage src={debtor.photo} alt={debtor.name} />
+                      <AvatarFallback className="text-lg font-semibold">
+                        {getInitials(debtor.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="space-y-1">
+                      <CardTitle className="text-2xl font-semibold">
+                        {debtor.name}
+                      </CardTitle>
+                      <CardDescription className="text-sm">
+                        {debtor.role} · {debtor.team}
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-5 pt-6">
+                  <div className="grid gap-3 text-sm">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <CalendarClock className="size-4" />
+                        Desde
+                      </div>
+                      <span className="font-medium">
+                        {format(debtor.owedSinceDate, "d 'de' MMMM yyyy", { locale: es })}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <TimerIcon className="size-4" />
+                        Tiempo sin torta
+                      </div>
+                      <span className="font-medium capitalize">{owedDistance}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Users className="size-4" />
+                        Último recordatorio
+                      </div>
+                      <span className="font-medium">
+                        {format(lastReminderDate, "d 'de' MMMM yyyy", { locale: es })}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="rounded-xl border bg-muted/30 px-4 py-3 text-sm">
+                    <p className="font-medium text-muted-foreground">Promesa oficial</p>
+                    <p className="mt-1 leading-relaxed">{debtor.notes}</p>
+                    <div className="mt-3 flex items-center gap-2 text-sm font-medium">
+                      <CakeSlice className="size-4 text-muted-foreground" />
+                      {debtor.favoriteCake}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </section>
+      </div>
     </div>
-  );
+  )
 }
